@@ -1,0 +1,14 @@
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\bin\Debug\net8.0\ServidorSubasta.exe
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\bin\Debug\net8.0\ServidorSubasta.deps.json
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\bin\Debug\net8.0\ServidorSubasta.runtimeconfig.json
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\bin\Debug\net8.0\ServidorSubasta.dll
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\bin\Debug\net8.0\ServidorSubasta.pdb
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\obj\Debug\net8.0\ServidorSubasta.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\obj\Debug\net8.0\ServidorSubasta.AssemblyInfoInputs.cache
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\obj\Debug\net8.0\ServidorSubasta.AssemblyInfo.cs
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\obj\Debug\net8.0\ServidorSubasta.csproj.CoreCompileInputs.cache
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\obj\Debug\net8.0\ServidorSubasta.dll
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\obj\Debug\net8.0\refint\ServidorSubasta.dll
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\obj\Debug\net8.0\ServidorSubasta.pdb
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\obj\Debug\net8.0\ServidorSubasta.genruntimeconfig.cache
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\obj\Debug\net8.0\ref\ServidorSubasta.dll
