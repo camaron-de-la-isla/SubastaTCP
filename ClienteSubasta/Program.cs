@@ -8,6 +8,7 @@ class Program
     {
         try
         {
+            // Establece la conexión con el servidor en la dirección y puerto especificados
             using TcpClient cliente = new TcpClient("127.0.0.1", 5000);
             using NetworkStream stream = cliente.GetStream();
 
@@ -15,6 +16,7 @@ class Program
             string nombre;
             string respuesta;
 
+            // Solicita el nombre del usuario y verifica si ya está en uso
             do
             {
                 nombre = Console.ReadLine();
@@ -29,8 +31,10 @@ class Program
 
             } while (respuesta.Contains("Error: Nombre ya registrado"));
 
+            // Bucle principal para interactuar con la subasta
             while (true)
             {
+                // Muestra el menú de opciones disponibles
                 Console.WriteLine("\nMenú:");
                 Console.WriteLine("1. Pujar");
                 Console.WriteLine("2. Mostrar resultado ronda");
@@ -44,6 +48,7 @@ class Program
                     Console.Write("Selecciona una opción: ");
                     opcion = Console.ReadLine();
 
+                    // Valida que la opción ingresada sea un número entre 1 y 5
                     if (!int.TryParse(opcion, out int numero) || numero < 1 || numero > 5)
                     {
                         Console.WriteLine("Opción no válida. Debe ser un número entre 1 y 5.");
@@ -55,18 +60,33 @@ class Program
 
                 } while (true);
 
+                // Envía la opción seleccionada al servidor
                 EnviarMensaje(stream, opcion);
 
+                // Recibe la respuesta del servidor y la muestra en pantalla
                 string resultado = RecibirMensaje(stream);
                 Console.WriteLine(resultado);
 
+                // Si la subasta ha finalizado, salir del bucle
                 if (resultado.StartsWith("La subasta ha finalizado"))
                 {
-                    break; // Salir del bucle y cerrar la conexión
+                    break;
                 }
 
-                if (opcion == "5") break;
+                // Si el usuario elige salir (opción 5), confirmar la salida con el servidor
+                if (opcion == "5")
+                {
+                    EnviarMensaje(stream, opcion);
+                    resultado = RecibirMensaje(stream);
+                    Console.WriteLine(resultado);
+                    if (resultado.StartsWith("La subasta ha finalizado"))
+                    {
+                        break;
+                    }
+                    continue;
+                }
 
+                // Si el usuario elige pujar (opción 1)
                 if (opcion == "1")
                 {
                     if (resultado.Equals("Introduce tu oferta"))
@@ -77,6 +97,7 @@ class Program
                             Console.Write("(número entero): ");
                             oferta = Console.ReadLine();
 
+                            // Verifica que la oferta ingresada sea un número válido
                             if (!int.TryParse(oferta, out _))
                             {
                                 Console.WriteLine("Debes ingresar un número válido.");
@@ -88,6 +109,7 @@ class Program
 
                         } while (true);
 
+                        // Envía la oferta al servidor y muestra la respuesta
                         EnviarMensaje(stream, oferta);
                         resultado = RecibirMensaje(stream);
                         Console.WriteLine(resultado);
@@ -97,16 +119,19 @@ class Program
         }
         catch (Exception e)
         {
+            // Captura y muestra cualquier error que ocurra durante la ejecución
             Console.WriteLine("Error: " + e.Message);
         }
     }
 
+    // Envía un mensaje al servidor a través del flujo de red
     static void EnviarMensaje(NetworkStream stream, string mensaje)
     {
         byte[] datos = Encoding.UTF8.GetBytes(mensaje);
         stream.Write(datos, 0, datos.Length);
     }
 
+    // Recibe un mensaje del servidor y lo devuelve como una cadena
     static string RecibirMensaje(NetworkStream stream)
     {
         byte[] buffer = new byte[1024];

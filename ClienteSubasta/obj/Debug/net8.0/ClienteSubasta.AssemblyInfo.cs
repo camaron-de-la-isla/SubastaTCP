@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ClienteSubasta")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c99181ccda8b8ccf9374085aca809f8a350a369b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1a2c5edd2bf869af735eeb3b77ceb6c7bc077681")]
 [assembly: System.Reflection.AssemblyProductAttribute("ClienteSubasta")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ClienteSubasta")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

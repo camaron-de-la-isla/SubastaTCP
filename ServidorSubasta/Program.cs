@@ -8,6 +8,7 @@ using System.Linq;
 
 class ServidorSubasta
 {
+    // Declaración de variables estáticas para la gestión del servidor y la subasta.
     private static TcpListener servidor;
     private static List<TcpClient> clientes = new List<TcpClient>();
     private static Dictionary<string, int> pujas = new Dictionary<string, int>();
@@ -15,16 +16,23 @@ class ServidorSubasta
     private static int maxClientes = 2;
     private static object lockObj = new object();
     private static bool subastaFinalizada = false;
+    private static string ganadorRonda = "";
     private static int clientesPujaron = 0;
+    private static string ganadorHistorico = "";
+    private static int pujaMaximaHistorica = 0; 
+
+    private static HashSet<string> ganadoresHistoricos = new HashSet<string>(); // Almacena ganadores históricos
     private static HashSet<string> clientesPujaronRonda = new HashSet<string>(); // Para rastrear quién ha pujado en la ronda
 
     
     static void Main()
     {
+        // Inicialización del servidor TCP en el puerto 5000.
         servidor = new TcpListener(IPAddress.Any, 5000);
         servidor.Start();
         Console.WriteLine("Servidor iniciado en el puerto 5000. Esperando clientes...");
 
+        // Aceptación de conexiones de clientes hasta alcanzar el máximo permitido.
         while (clientes.Count < maxClientes)
         {
             TcpClient cliente = servidor.AcceptTcpClient();
@@ -46,6 +54,7 @@ class ServidorSubasta
 
     static void ManejarCliente(object obj)
     {
+        // Manejo de la conexión de un cliente individual.
         TcpClient cliente = (TcpClient)obj;
         NetworkStream stream = cliente.GetStream();
         byte[] buffer = new byte[1024];
@@ -53,6 +62,7 @@ class ServidorSubasta
 
         try
         {
+            // Bucle para recibir el nombre del cliente.
             while (true)
             {
                 // Recibir el nombre del cliente
@@ -97,6 +107,7 @@ class ServidorSubasta
                 switch (mensaje.Trim())
                 {
                     case "1":
+                        // Manejo de la opción de pujar.
                         if (clientesPujaronRonda.Contains(nombre))
                         {
                             EnviarMensaje(stream, "Ya has pujado en esta ronda.");
@@ -113,6 +124,13 @@ class ServidorSubasta
                                     Console.WriteLine($"{nombre} ha pujado {cantidad}");
                                     clientesPujaron++;
                                     clientesPujaronRonda.Add(nombre);
+                                    
+                                    if (cantidad > pujaMaximaHistorica)
+                                    {
+                                        pujaMaximaHistorica = cantidad;
+                                        ganadorHistorico = nombre;
+                                        Console.WriteLine($"Nuevo ganador histórico: {nombre} con {cantidad}");
+                                    }
 
                                     if (clientesPujaron == maxClientes)
                                     {
@@ -132,6 +150,7 @@ class ServidorSubasta
                         break;
 
                     case "2":
+                        // Manejo de la opción de mostrar resultados de la ronda.
                         string resultado = "Pujas de la última ronda:\n";
                         lock (lockObj)
                         {
@@ -153,6 +172,7 @@ class ServidorSubasta
                         break;
 
                     case "3":
+                        // Manejo de la opción de mostrar el historial de pujas.
                         string historial = "Historial de pujas:\n";
                         lock (lockObj)
                         {
@@ -169,6 +189,7 @@ class ServidorSubasta
                         break;
 
                     case "4":
+                        // Manejo de la opción de mostrar la puja máxima.
                         string maxPujaMsg = "No hay pujas aún";
                         lock (lockObj)
                         {
@@ -182,11 +203,23 @@ class ServidorSubasta
                         break;
 
                     case "5":
-                        Console.WriteLine($"{nombre} ha salido de la subasta.");
-                        EnviarMensaje(stream, $"La subasta ha finalizado. Ganador: {DeterminarGanador()}");
-                        ClienteDesconectado(cliente);
-                        return;
-
+                        // Manejo de la opción de salir de la subasta\.
+                        lock (lockObj)
+                        {
+                            if (nombre == ganadorHistorico)
+                            {
+                                EnviarMensaje(stream, "No puedes salir, eres el ganador histórico.");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"{nombre} ha salido de la subasta.");
+                                EnviarMensaje(stream, $"La subasta ha finalizado. Ganador: {DeterminarGanador()}");
+                                ClienteDesconectado(cliente);
+                                return;
+                            }
+                        }
+                        break;
+                    
                     default:
                         EnviarMensaje(stream, "Opción no válida, intenta de nuevo.");
                         break;
@@ -201,6 +234,7 @@ class ServidorSubasta
 
     static void ClienteDesconectado(TcpClient cliente)
     {
+        // Manejo de la desconexión de un cliente.
         lock (lockObj)
         {
             if (!clientes.Contains(cliente)) return;
@@ -229,6 +263,7 @@ class ServidorSubasta
     }
 
     static void FinalizarSubasta()
+    // Manejo de la finalización de la subasta.
     {
         lock (lockObj)
         {
@@ -242,6 +277,7 @@ class ServidorSubasta
         {
             try
             {
+                // Enviar mensaje de finalización a cada cliente.
                 if (cliente.Connected)
                 {
                     NetworkStream stream = cliente.GetStream();
@@ -255,6 +291,7 @@ class ServidorSubasta
             }
         }
 
+        // Guardar el historial de pujas y cerrar el servidor.
         clientes.Clear();
         servidor.Stop();
         Environment.Exit(0);
@@ -262,6 +299,7 @@ class ServidorSubasta
 
     static void EnviarMensaje(NetworkStream stream, string mensaje)
     {
+        // Enviar un mensaje al cliente.
         byte[] datos = Encoding.UTF8.GetBytes(mensaje);
         stream.Write(datos, 0, datos.Length);
         stream.Flush();
@@ -269,6 +307,7 @@ class ServidorSubasta
 
     static string RecibirMensaje(NetworkStream stream)
     {
+        // Recibir un mensaje del cliente.
         byte[] buffer = new byte[1024];
         int bytesLeidos = stream.Read(buffer, 0, buffer.Length);
         if (bytesLeidos == 0) return "";
@@ -278,6 +317,7 @@ class ServidorSubasta
 
     static void GuardarHistorial()
     {
+        // Guardar el historial de pujas.
         lock (lockObj)
         {
             historialPujas.Add(new Dictionary<string, int>(pujas));
@@ -288,33 +328,17 @@ class ServidorSubasta
     {
         lock (lockObj)
         {
+            // Determinar el ganador de la ronda.
             if (pujas.Count > 0)
             {
                 var ganador = pujas.Aggregate((l, r) => l.Value > r.Value ? l : r);
+                ganadorRonda = ganador.Key;
                 return $"{ganador.Key} con {ganador.Value}";
             }
             else
             {
+                ganadorRonda = "";
                 return "No hubo pujas";
-            }
-        }
-    }
-    
-    static void EnviarMensajeATodos(string mensaje)
-    {
-        lock (lockObj)
-        {
-            foreach (var cliente in clientes)
-            {
-                try
-                {
-                    NetworkStream stream = cliente.GetStream();
-                    EnviarMensaje(stream, mensaje);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error al enviar mensaje a un cliente: {ex.Message}");
-                }
             }
         }
     }
