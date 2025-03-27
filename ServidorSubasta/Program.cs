@@ -15,7 +15,10 @@ class ServidorSubasta
     private static int maxClientes = 2;
     private static object lockObj = new object();
     private static bool subastaFinalizada = false;
+    private static int clientesPujaron = 0;
+    private static HashSet<string> clientesPujaronRonda = new HashSet<string>(); // Para rastrear quién ha pujado en la ronda
 
+    
     static void Main()
     {
         servidor = new TcpListener(IPAddress.Any, 5000);
@@ -41,178 +44,221 @@ class ServidorSubasta
         }
     }
 
-static void ManejarCliente(object obj)
-{
-    TcpClient cliente = (TcpClient)obj;
-    NetworkStream stream = cliente.GetStream();
-    byte[] buffer = new byte[1024];
-    string nombre = "";
-
-    try
+    static void ManejarCliente(object obj)
     {
-        while (true)
+        TcpClient cliente = (TcpClient)obj;
+        NetworkStream stream = cliente.GetStream();
+        byte[] buffer = new byte[1024];
+        string nombre = "";
+
+        try
         {
-            // Recibir el nombre del cliente
-            int bytesRead = stream.Read(buffer, 0, buffer.Length);
-            if (bytesRead == 0)
+            while (true)
             {
-                ClienteDesconectado(cliente);
-                return;
-            }
-
-            nombre = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
-
-            lock (lockObj)
-            {
-                if (!pujas.ContainsKey(nombre))
+                // Recibir el nombre del cliente
+                int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                if (bytesRead == 0)
                 {
-                    pujas[nombre] = 0;
-                    Console.WriteLine($"{nombre} se ha inscrito en la subasta.");
-                    EnviarMensaje(stream, "Inscripción exitosa");
-                    break;
+                    ClienteDesconectado(cliente);
+                    return;
                 }
-                else
+
+                nombre = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
+
+                lock (lockObj)
                 {
-                    EnviarMensaje(stream, "Error: Nombre ya registrado");
-                }
-            }
-        }
-
-        // Empezar las rondas de pujas
-        while (!subastaFinalizada)
-        {
-            string mensaje = RecibirMensaje(stream);
-
-            if (string.IsNullOrEmpty(mensaje))
-            {
-                ClienteDesconectado(cliente);
-                return;
-            }
-
-            Console.WriteLine($"Mensaje recibido de {nombre}: '{mensaje}'");
-
-            switch (mensaje.Trim())
-            {
-                case "1":
-                    EnviarMensaje(stream, "Introduce tu oferta");
-                    string ofertaTexto = RecibirMensaje(stream);
-                    if (int.TryParse(ofertaTexto, out int cantidad))
+                    if (!pujas.ContainsKey(nombre))
                     {
-                        lock (lockObj)
-                        {
-                            pujas[nombre] = cantidad;
-                            Console.WriteLine($"{nombre} ha pujado {cantidad}");
-                        }
-                        EnviarMensaje(stream, "Puja recibida");
-                        GuardarHistorial();
+                        pujas[nombre] = 0;
+                        Console.WriteLine($"{nombre} se ha inscrito en la subasta.");
+                        EnviarMensaje(stream, "Inscripción exitosa");
+                        break;
                     }
                     else
                     {
-                        EnviarMensaje(stream, "Error: Introduce un número válido");
+                        EnviarMensaje(stream, "Error: Nombre ya registrado");
                     }
-                    break;
+                }
+            }
 
-                case "2":
-                    string resultado = "Pujas de la última ronda:\n";
-                    lock (lockObj)
-                    {
-                        foreach (var p in pujas)
-                            resultado += $"{p.Key}: {p.Value}\n";
-                    }
-                    EnviarMensaje(stream, resultado);
-                    break;
+            // Empezar las rondas de pujas
+            while (!subastaFinalizada)
+            {
+                string mensaje = RecibirMensaje(stream);
 
-                case "3":
-                    string historial = "Historial de pujas:\n";
-                    lock (lockObj)
-                    {
-                        foreach (var ronda in historialPujas)
-                        {
-                            foreach (var p in ronda)
-                            {
-                                historial += $"{p.Key}: {p.Value}\n";
-                            }
-                            historial += "----\n";
-                        }
-                    }
-                    EnviarMensaje(stream, historial);
-                    break;
-
-                case "4":
-                    string maxPujaMsg = "No hay pujas aún";
-                    lock (lockObj)
-                    {
-                        if (pujas.Count > 0)
-                        {
-                            var maxPuja = pujas.Aggregate((l, r) => l.Value > r.Value ? l : r);
-                            maxPujaMsg = $"Mayor puja: {maxPuja.Key} con {maxPuja.Value}";
-                        }
-                    }
-                    EnviarMensaje(stream, maxPujaMsg);
-                    break;
-
-                case "5":
-                    Console.WriteLine($"{nombre} ha salido de la subasta.");
+                if (string.IsNullOrEmpty(mensaje))
+                {
                     ClienteDesconectado(cliente);
                     return;
+                }
 
-                default:
-                    EnviarMensaje(stream, "Opción no válida, intenta de nuevo.");
-                    break;
+                Console.WriteLine($"Mensaje recibido de {nombre}: '{mensaje}'");
+
+                switch (mensaje.Trim())
+                {
+                    case "1":
+                        if (clientesPujaronRonda.Contains(nombre))
+                        {
+                            EnviarMensaje(stream, "Ya has pujado en esta ronda.");
+                        }
+                        else
+                        {
+                            EnviarMensaje(stream, "Introduce tu oferta");
+                            string ofertaTexto = RecibirMensaje(stream);
+                            if (int.TryParse(ofertaTexto, out int cantidad))
+                            {
+                                lock (lockObj)
+                                {
+                                    pujas[nombre] = cantidad;
+                                    Console.WriteLine($"{nombre} ha pujado {cantidad}");
+                                    clientesPujaron++;
+                                    clientesPujaronRonda.Add(nombre);
+
+                                    if (clientesPujaron == maxClientes)
+                                    {
+                                        DeterminarGanador();
+                                        GuardarHistorial();
+                                        clientesPujaron = 0;
+                                        clientesPujaronRonda.Clear(); // Reiniciar para la próxima ronda
+                                    }
+                                }
+                                EnviarMensaje(stream, "Puja recibida");
+                            }
+                            else
+                            {
+                                EnviarMensaje(stream, "Error: Introduce un número válido");
+                            }
+                        }
+                        break;
+
+                    case "2":
+                        string resultado = "Pujas de la última ronda:\n";
+                        lock (lockObj)
+                        {
+                            foreach (var p in pujas)
+                                resultado += $"{p.Key}: {p.Value}\n";
+
+                            // Determinar y añadir el ganador al resultado
+                            if (pujas.Count > 0)
+                            {
+                                var ganador = pujas.Aggregate((l, r) => l.Value > r.Value ? l : r);
+                                resultado += $"Ganador de la ronda: {ganador.Key} con {ganador.Value}\n";
+                            }
+                            else
+                            {
+                                resultado += "Aún no hay pujas en esta ronda.\n";
+                            }
+                        }
+                        EnviarMensaje(stream, resultado);
+                        break;
+
+                    case "3":
+                        string historial = "Historial de pujas:\n";
+                        lock (lockObj)
+                        {
+                            foreach (var ronda in historialPujas)
+                            {
+                                foreach (var p in ronda)
+                                {
+                                    historial += $"{p.Key}: {p.Value}\n";
+                                }
+                                historial += "----\n";
+                            }
+                        }
+                        EnviarMensaje(stream, historial);
+                        break;
+
+                    case "4":
+                        string maxPujaMsg = "No hay pujas aún";
+                        lock (lockObj)
+                        {
+                            if (pujas.Count > 0)
+                            {
+                                var maxPuja = pujas.Aggregate((l, r) => l.Value > r.Value ? l : r);
+                                maxPujaMsg = $"Mayor puja: {maxPuja.Key} con {maxPuja.Value}";
+                            }
+                        }
+                        EnviarMensaje(stream, maxPujaMsg);
+                        break;
+
+                    case "5":
+                        Console.WriteLine($"{nombre} ha salido de la subasta.");
+                        EnviarMensaje(stream, $"La subasta ha finalizado. Ganador: {DeterminarGanador()}");
+                        ClienteDesconectado(cliente);
+                        return;
+
+                    default:
+                        EnviarMensaje(stream, "Opción no válida, intenta de nuevo.");
+                        break;
+                }
             }
         }
-    }
-    catch (Exception)
-    {
-        ClienteDesconectado(cliente);
-    }
-}
-
-static void ClienteDesconectado(TcpClient cliente)
-{
-    lock (lockObj)
-    {
-        if (!clientes.Contains(cliente)) return;
-        clientes.Remove(cliente);
-    }
-
-    Console.WriteLine("Un cliente se ha desconectado. Finalizando la subasta...");
-
-    FinalizarSubasta();
-}
-
-static void FinalizarSubasta()
-{
-    lock (lockObj)
-    {
-        if (subastaFinalizada) return;
-        subastaFinalizada = true;
-    }
-
-    Console.WriteLine("Subasta finalizada. Cerrando conexiones...");
-
-    foreach (var cliente in clientes)
-    {
-        try
+        catch (Exception)
         {
-            if (cliente.Connected)
+            ClienteDesconectado(cliente);
+        }
+    }
+
+    static void ClienteDesconectado(TcpClient cliente)
+    {
+        lock (lockObj)
+        {
+            if (!clientes.Contains(cliente)) return;
+            clientes.Remove(cliente);
+        }
+
+        Console.WriteLine("Un cliente se ha desconectado.");
+
+        // Si solo queda un cliente, enviarle el ganador y finalizar.
+        if (clientes.Count == 1)
+        {
+            try
             {
-                NetworkStream stream = cliente.GetStream();
-                EnviarMensaje(stream, "Puja finalizada");
+                NetworkStream stream = clientes[0].GetStream();
+                EnviarMensaje(stream, $"La subasta ha finalizado. Ganador: {DeterminarGanador()}");
             }
-            cliente.Close();
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al enviar mensaje al cliente restante: {ex.Message}");
+            }
         }
-        catch (Exception ex)
+        else if (clientes.Count == 0)
         {
-            Console.WriteLine($"Error al cerrar conexión: {ex.Message}");
+            FinalizarSubasta();
         }
     }
 
-    clientes.Clear();
-    servidor.Stop();
-    Environment.Exit(0);
-}
+    static void FinalizarSubasta()
+    {
+        lock (lockObj)
+        {
+            if (subastaFinalizada) return;
+            subastaFinalizada = true;
+        }
 
+        Console.WriteLine("Subasta finalizada. Cerrando conexiones...");
+
+        foreach (var cliente in clientes)
+        {
+            try
+            {
+                if (cliente.Connected)
+                {
+                    NetworkStream stream = cliente.GetStream();
+                    EnviarMensaje(stream, "Puja finalizada");
+                }
+                cliente.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al cerrar conexión: {ex.Message}");
+            }
+        }
+
+        clientes.Clear();
+        servidor.Stop();
+        Environment.Exit(0);
+    }
 
     static void EnviarMensaje(NetworkStream stream, string mensaje)
     {
@@ -235,7 +281,41 @@ static void FinalizarSubasta()
         lock (lockObj)
         {
             historialPujas.Add(new Dictionary<string, int>(pujas));
-            Console.WriteLine("Ronda finalizada. Se guardó el historial de pujas.");
+        }
+    }
+
+    static string DeterminarGanador()
+    {
+        lock (lockObj)
+        {
+            if (pujas.Count > 0)
+            {
+                var ganador = pujas.Aggregate((l, r) => l.Value > r.Value ? l : r);
+                return $"{ganador.Key} con {ganador.Value}";
+            }
+            else
+            {
+                return "No hubo pujas";
+            }
+        }
+    }
+    
+    static void EnviarMensajeATodos(string mensaje)
+    {
+        lock (lockObj)
+        {
+            foreach (var cliente in clientes)
+            {
+                try
+                {
+                    NetworkStream stream = cliente.GetStream();
+                    EnviarMensaje(stream, mensaje);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error al enviar mensaje a un cliente: {ex.Message}");
+                }
+            }
         }
     }
 }

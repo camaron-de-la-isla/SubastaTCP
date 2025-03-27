@@ -12,3 +12,4 @@ C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\obj\Debug\net8.0\refint
 C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\obj\Debug\net8.0\ServidorSubasta.pdb
 C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\obj\Debug\net8.0\ServidorSubasta.genruntimeconfig.cache
 C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\obj\Debug\net8.0\ref\ServidorSubasta.dll
+C:\Users\sergio\RiderProjects\SubastaTCP\ServidorSubasta\obj\Debug\net8.0\ServidorSubasta.sourcelink.json

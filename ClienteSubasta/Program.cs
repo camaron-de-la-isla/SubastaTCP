@@ -60,30 +60,38 @@ class Program
                 string resultado = RecibirMensaje(stream);
                 Console.WriteLine(resultado);
 
+                if (resultado.StartsWith("La subasta ha finalizado"))
+                {
+                    break; // Salir del bucle y cerrar la conexión
+                }
+
                 if (opcion == "5") break;
 
                 if (opcion == "1")
                 {
-                    string oferta;
-                    do
+                    if (resultado.Equals("Introduce tu oferta"))
                     {
-                        Console.Write("(número entero): ");
-                        oferta = Console.ReadLine();
-
-                        if (!int.TryParse(oferta, out _))
+                        string oferta;
+                        do
                         {
-                            Console.WriteLine("Debes ingresar un número válido.");
-                        }
-                        else
-                        {
-                            break;
-                        }
+                            Console.Write("(número entero): ");
+                            oferta = Console.ReadLine();
 
-                    } while (true);
+                            if (!int.TryParse(oferta, out _))
+                            {
+                                Console.WriteLine("Debes ingresar un número válido.");
+                            }
+                            else
+                            {
+                                break;
+                            }
 
-                    EnviarMensaje(stream, oferta);
-                    resultado = RecibirMensaje(stream);
-                    Console.WriteLine(resultado);
+                        } while (true);
+
+                        EnviarMensaje(stream, oferta);
+                        resultado = RecibirMensaje(stream);
+                        Console.WriteLine(resultado);
+                    }
                 }
             }
         }
